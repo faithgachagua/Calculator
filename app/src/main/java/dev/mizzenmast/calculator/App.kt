@@ -1,0 +1,70 @@
+package dev.mizzenmast.calculator
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun App(modifier: Modifier = Modifier) {
+    var activePage by remember { mutableIntStateOf(0) }
+    val screens = listOf("Calculator", "Exchange Rate", "Unit Converter")
+    val pagerState = rememberPagerState { screens.count() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                actions = {
+                    IconButton(
+                        onClick = {/*TODO: Open Settings*/}
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.settings),
+                            contentDescription = null
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            PrimaryTabRow(selectedTabIndex = activePage) {
+                screens.forEachIndexed { index, screen ->
+                    Tab(
+                        selected = activePage == index,
+                        onClick = { activePage = index },
+                        text = { Text(screen) }
+                    )
+                }
+
+            }
+            HorizontalPager(
+                state = pagerState
+            ) { page ->
+                Text("page $activePage")
+            }
+        }
+    }
+}
