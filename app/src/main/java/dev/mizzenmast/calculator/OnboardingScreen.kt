@@ -3,6 +3,7 @@ package dev.mizzenmast.calculator
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -99,22 +101,21 @@ fun OnboardingScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(96.dp))
 
         /*
          * Hero icon
          */
         Box(
             modifier = Modifier
-                .size(96.dp)
+                .size(80.dp)
                 .clip(RoundedCornerShape(30.dp))
                 .background(MaterialTheme.colorScheme.primary),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Calculate,
+            Image(
+                painter = painterResource(R.drawable.calculator),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(48.dp)
             )
         }

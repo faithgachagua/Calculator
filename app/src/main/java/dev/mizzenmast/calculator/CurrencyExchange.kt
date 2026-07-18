@@ -12,11 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,12 +24,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingFlat
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -55,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,50 +68,142 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.time.Duration.Companion.milliseconds
 
-// Free, no-key FX API covering ~160 currencies: https://www.exchangerate-api.com/docs/free
-private suspend fun fetchRatesForBase(base: String): Map<String, Double> = withContext(Dispatchers.IO) {
-    val connection = URL("https://open.er-api.com/v6/latest/$base").openConnection() as HttpURLConnection
+
+// -----------------------------------------------------------------------------
+// NETWORK
+// -----------------------------------------------------------------------------
+
+private suspend fun fetchRatesForBase(
+    base: String
+): Map<String, Double> = withContext(Dispatchers.IO) {
+
+    val connection =
+        URL("https://open.er-api.com/v6/latest/$base")
+            .openConnection() as HttpURLConnection
+
     connection.connectTimeout = 8000
     connection.readTimeout = 8000
+
     try {
-        val json = JSONObject(connection.inputStream.bufferedReader().readText())
-        if (json.optString("result") != "success") error("API returned an error")
-        val ratesObj = json.getJSONObject("rates")
+        val json = JSONObject(
+            connection.inputStream
+                .bufferedReader()
+                .readText()
+        )
+
+        if (json.optString("result") != "success") {
+            error("API returned an error")
+        }
+
+        val ratesObject = json.getJSONObject("rates")
         val map = LinkedHashMap<String, Double>()
-        ratesObj.keys().forEach { key -> map[key] = ratesObj.getDouble(key) }
+
+        ratesObject.keys().forEach { key ->
+            map[key] = ratesObject.getDouble(key)
+        }
+
         map
     } finally {
         connection.disconnect()
     }
 }
 
-private val favoriteCurrencies = listOf("USD", "EUR", "GBP", "TZS", "UGX")
+
+// -----------------------------------------------------------------------------
+// CURRENCY DATA
+// -----------------------------------------------------------------------------
+
+private val favoriteCurrencies = listOf(
+    "USD",
+    "EUR",
+    "GBP",
+    "TZS",
+    "UGX"
+)
 
 private val flagMap = mapOf(
-    "USD" to "🇺🇸", "EUR" to "🇪🇺", "GBP" to "🇬🇧", "KES" to "🇰🇪", "TZS" to "🇹🇿", "UGX" to "🇺🇬",
-    "JPY" to "🇯🇵", "CNY" to "🇨🇳", "INR" to "🇮🇳", "AUD" to "🇦🇺", "CAD" to "🇨🇦", "CHF" to "🇨🇭",
-    "ZAR" to "🇿🇦", "NGN" to "🇳🇬", "GHS" to "🇬🇭", "AED" to "🇦🇪", "SAR" to "🇸🇦", "BRL" to "🇧🇷",
-    "MXN" to "🇲🇽", "SEK" to "🇸🇪", "NOK" to "🇳🇴", "SGD" to "🇸🇬", "HKD" to "🇭🇰", "NZD" to "🇳🇿",
-    "RWF" to "🇷🇼", "ETB" to "🇪🇹", "EGP" to "🇪🇬", "MAD" to "🇲🇦", "XOF" to "🌍", "XAF" to "🌍",
+    "USD" to "🇺🇸",
+    "EUR" to "🇪🇺",
+    "GBP" to "🇬🇧",
+    "KES" to "🇰🇪",
+    "TZS" to "🇹🇿",
+    "UGX" to "🇺🇬",
+    "JPY" to "🇯🇵",
+    "CNY" to "🇨🇳",
+    "INR" to "🇮🇳",
+    "AUD" to "🇦🇺",
+    "CAD" to "🇨🇦",
+    "CHF" to "🇨🇭",
+    "ZAR" to "🇿🇦",
+    "NGN" to "🇳🇬",
+    "GHS" to "🇬🇭",
+    "AED" to "🇦🇪",
+    "SAR" to "🇸🇦",
+    "BRL" to "🇧🇷",
+    "MXN" to "🇲🇽",
+    "SEK" to "🇸🇪",
+    "NOK" to "🇳🇴",
+    "SGD" to "🇸🇬",
+    "HKD" to "🇭🇰",
+    "NZD" to "🇳🇿",
+    "RWF" to "🇷🇼",
+    "ETB" to "🇪🇹",
+    "EGP" to "🇪🇬",
+    "MAD" to "🇲🇦",
+    "XOF" to "🌍",
+    "XAF" to "🌍"
 )
-private fun flag(code: String) = flagMap[code] ?: "💱"
+
+private fun flag(code: String): String {
+    return flagMap[code] ?: "💱"
+}
 
 private val currencyNames = mapOf(
-    "USD" to "US Dollar", "EUR" to "Euro", "GBP" to "British Pound", "KES" to "Kenyan Shilling",
-    "TZS" to "Tanzanian Shilling", "UGX" to "Ugandan Shilling", "JPY" to "Japanese Yen",
-    "CNY" to "Chinese Yuan", "INR" to "Indian Rupee", "AUD" to "Australian Dollar",
-    "CAD" to "Canadian Dollar", "CHF" to "Swiss Franc", "ZAR" to "South African Rand",
-    "NGN" to "Nigerian Naira", "GHS" to "Ghanaian Cedi", "AED" to "UAE Dirham",
-    "SAR" to "Saudi Riyal", "BRL" to "Brazilian Real", "MXN" to "Mexican Peso",
-    "SEK" to "Swedish Krona", "NOK" to "Norwegian Krone", "SGD" to "Singapore Dollar",
-    "HKD" to "Hong Kong Dollar", "NZD" to "New Zealand Dollar", "RWF" to "Rwandan Franc",
-    "ETB" to "Ethiopian Birr", "EGP" to "Egyptian Pound", "MAD" to "Moroccan Dirham",
+    "USD" to "US Dollar",
+    "EUR" to "Euro",
+    "GBP" to "British Pound",
+    "KES" to "Kenyan Shilling",
+    "TZS" to "Tanzanian Shilling",
+    "UGX" to "Ugandan Shilling",
+    "JPY" to "Japanese Yen",
+    "CNY" to "Chinese Yuan",
+    "INR" to "Indian Rupee",
+    "AUD" to "Australian Dollar",
+    "CAD" to "Canadian Dollar",
+    "CHF" to "Swiss Franc",
+    "ZAR" to "South African Rand",
+    "NGN" to "Nigerian Naira",
+    "GHS" to "Ghanaian Cedi",
+    "AED" to "UAE Dirham",
+    "SAR" to "Saudi Riyal",
+    "BRL" to "Brazilian Real",
+    "MXN" to "Mexican Peso",
+    "SEK" to "Swedish Krona",
+    "NOK" to "Norwegian Krone",
+    "SGD" to "Singapore Dollar",
+    "HKD" to "Hong Kong Dollar",
+    "NZD" to "New Zealand Dollar",
+    "RWF" to "Rwandan Franc",
+    "ETB" to "Ethiopian Birr",
+    "EGP" to "Egyptian Pound",
+    "MAD" to "Moroccan Dirham"
 )
-private fun currencyName(code: String) = currencyNames[code] ?: code
+
+private fun currencyName(code: String): String {
+    return currencyNames[code] ?: code
+}
+
+
+// -----------------------------------------------------------------------------
+// HELPERS
+// -----------------------------------------------------------------------------
 
 private fun elapsedLabel(sinceMillis: Long): String {
     if (sinceMillis == 0L) return ""
-    val seconds = (System.currentTimeMillis() - sinceMillis) / 1000
+
+    val seconds =
+        (System.currentTimeMillis() - sinceMillis) / 1000
+
     return when {
         seconds < 60 -> "Updated just now"
         seconds < 3600 -> "Updated ${seconds / 60} min ago"
@@ -119,22 +211,59 @@ private fun elapsedLabel(sinceMillis: Long): String {
     }
 }
 
+
+// -----------------------------------------------------------------------------
+// SCREEN
+// -----------------------------------------------------------------------------
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CurrencyExchangeScreen(modifier: Modifier = Modifier, refreshTrigger: Int = 0) {
+fun CurrencyExchangeScreen(
+    modifier: Modifier = Modifier,
+    refreshTrigger: Int = 0
+) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    var ratesForBase by remember { mutableStateOf<Map<String, Double>?>(null) }
-    var from by remember { mutableStateOf("KES") }
-    var to by remember { mutableStateOf("USD") }
-    var amount by remember { mutableStateOf("100") }
-    var previousRate by remember { mutableStateOf<Double?>(null) }
-    var lastUpdated by remember { mutableLongStateOf(0L) }
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var tick by remember { mutableIntStateOf(0) }
-    var pickerFor by remember { mutableStateOf<String?>(null) } // "from" | "to" | null
+    var ratesForBase by remember {
+        mutableStateOf<Map<String, Double>?>(null)
+    }
+
+    var from by remember {
+        mutableStateOf("KES")
+    }
+
+    var to by remember {
+        mutableStateOf("USD")
+    }
+
+    var amount by remember {
+        mutableStateOf("100")
+    }
+
+    var previousRate by remember {
+        mutableStateOf<Double?>(null)
+    }
+
+    var lastUpdated by remember {
+        mutableLongStateOf(0L)
+    }
+
+    var loading by remember {
+        mutableStateOf(false)
+    }
+
+    var error by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var tick by remember {
+        mutableIntStateOf(0)
+    }
+
+    var pickerFor by remember {
+        mutableStateOf<String?>(null)
+    }
 
     fun refresh() {
         if (!isOnline(context)) {
@@ -142,93 +271,211 @@ fun CurrencyExchangeScreen(modifier: Modifier = Modifier, refreshTrigger: Int = 
             loading = false
             return
         }
+
         loading = true
         error = null
+        ratesForBase = null
+
         scope.launch {
             try {
                 val newRates = fetchRatesForBase(from)
+
                 previousRate = ratesForBase?.get(to)
                 ratesForBase = newRates
                 lastUpdated = System.currentTimeMillis()
+
             } catch (e: Exception) {
-                error = "Couldn't load rates — ${e.message ?: "check your connection"}"
+                error =
+                    "Couldn't load rates — ${e.message ?: "check your connection"}"
             } finally {
                 loading = false
             }
         }
     }
 
-    LaunchedEffect(from, refreshTrigger) { refresh() }
-    LaunchedEffect(Unit) { while (true) { delay(15_000.milliseconds); tick++ } }
+    LaunchedEffect(from, refreshTrigger) {
+        refresh()
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(15_000.milliseconds)
+            tick++
+        }
+    }
 
     val rate = ratesForBase?.get(to)
-    val amountValue = amount.toDoubleOrNull() ?: 0.0
-    val converted = rate?.let { it * amountValue }
+
+    val amountValue =
+        amount.toDoubleOrNull() ?: 0.0
+
+    val converted =
+        rate?.let { it * amountValue }
+
     val trend = when {
         previousRate == null || rate == null -> null
         rate > previousRate!! -> "up"
         rate < previousRate!! -> "down"
         else -> "flat"
     }
-    val availableCurrencies = ratesForBase?.keys?.sorted()
-        ?: listOf("USD", "EUR", "GBP", "KES", "TZS", "UGX", "NGN", "ZAR", "INR", "JPY")
+
+    val availableCurrencies =
+        ratesForBase?.keys?.sorted()
+            ?: listOf(
+                "USD",
+                "EUR",
+                "GBP",
+                "KES",
+                "TZS",
+                "UGX",
+                "NGN",
+                "ZAR",
+                "INR",
+                "JPY"
+            )
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(20.dp)
     ) {
-        KeypadAmountField(label = "Amount", value = amount, onValueChange = { amount = it })
+
+        // ---------------------------------------------------------------------
+        // AMOUNT
+        // ---------------------------------------------------------------------
+
+        KeypadAmountField(
+            label = "Amount",
+            value = amount,
+            onValueChange = { amount = it }
+        )
 
         Spacer(Modifier.height(16.dp))
-        Text("From", style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(8.dp))
-        CurrencyRow(from) { pickerFor = "from" }
 
-        Spacer(Modifier.height(8.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            FilledIconButton(onClick = { val t = from; from = to; to = t }) {
-                Icon(Icons.Default.SwapVert, contentDescription = "Swap currencies")
+        // ---------------------------------------------------------------------
+        // CURRENCY SELECTION
+        // ---------------------------------------------------------------------
+
+        CurrencySelectionCard(
+            from = from,
+            to = to,
+            onFromClick = {
+                pickerFor = "from"
+            },
+            onToClick = {
+                pickerFor = "to"
+            },
+            onSwap = {
+                val temp = from
+                from = to
+                to = temp
             }
-        }
+        )
 
-        Text("To", style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(8.dp))
-        CurrencyRow(to) { pickerFor = "to" }
+        Spacer(Modifier.height(16.dp))
 
-        Spacer(Modifier.height(20.dp))
+        // ---------------------------------------------------------------------
+        // RESULT
+        // ---------------------------------------------------------------------
+
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
         ) {
-            Column(Modifier.padding(16.dp)) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Text(
+                    text = "CONVERTED AMOUNT",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+
+                Spacer(Modifier.height(8.dp))
+
                 when {
-                    loading -> CircularProgressIndicator()
-                    error != null -> Column {
-                        Text(error!!, color = MaterialTheme.colorScheme.error)
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(onClick = { refresh() }) { Text("Retry") }
+                    loading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(72.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
+
+                    error != null -> {
+                        Text(
+                            text = error!!,
+                            color = MaterialTheme.colorScheme.error
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        TextButton(
+                            onClick = {
+                                refresh()
+                            }
+                        ) {
+                            Text("Retry")
+                        }
+                    }
+
                     converted != null -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                "= ${formatResult(converted)} $to",
-                                fontSize = 28.sp,
+                                text = "${formatResult(converted)} $to",
+                                fontSize = 32.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f)
                             )
+
                             when (trend) {
-                                "up" -> Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = "Rising", tint = MaterialTheme.colorScheme.secondary)
-                                "down" -> Icon(Icons.AutoMirrored.Filled.TrendingDown, contentDescription = "Falling", tint = MaterialTheme.colorScheme.error)
-                                "flat" -> Icon(Icons.AutoMirrored.Filled.TrendingFlat, contentDescription = "Steady", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                "up" -> Icon(
+                                    Icons.AutoMirrored.Filled.TrendingUp,
+                                    contentDescription = "Rising"
+                                )
+
+                                "down" -> Icon(
+                                    Icons.AutoMirrored.Filled.TrendingDown,
+                                    contentDescription = "Falling"
+                                )
+
+                                "flat" -> Icon(
+                                    Icons.AutoMirrored.Filled.TrendingFlat,
+                                    contentDescription = "Steady"
+                                )
                             }
                         }
-                        Spacer(Modifier.height(4.dp))
-                        Text("1 $from = ${formatResult(rate)} $to", style = MaterialTheme.typography.bodySmall)
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Text(
+                            text = "1 $from = ${formatResult(rate)} $to",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
                         if (lastUpdated != 0L) {
-                            val label = remember(tick, lastUpdated) { elapsedLabel(lastUpdated) }
-                            Spacer(Modifier.height(2.dp))
-                            Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                            Spacer(Modifier.height(4.dp))
+
+                            Text(
+                                text = remember(
+                                    tick,
+                                    lastUpdated
+                                ) {
+                                    elapsedLabel(lastUpdated)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         }
                     }
                 }
@@ -236,54 +483,186 @@ fun CurrencyExchangeScreen(modifier: Modifier = Modifier, refreshTrigger: Int = 
         }
 
         Spacer(Modifier.height(20.dp))
-        Text("Favorites", style = MaterialTheme.typography.labelLarge)
+
+        // ---------------------------------------------------------------------
+        // FAVORITES
+        // ---------------------------------------------------------------------
+
+        Text(
+            text = "Favorites",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+
         Spacer(Modifier.height(8.dp))
-        LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.height(48.dp)) {
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             items(favoriteCurrencies) { code ->
                 AssistChip(
-                    onClick = { to = code },
-                    label = { Text("${flag(code)} $code") },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    modifier = Modifier.padding(2.dp)
+                    onClick = {
+                        to = code
+                    },
+                    label = {
+                        Text("${flag(code)}  $code")
+                    },
+                    shape = RoundedCornerShape(12.dp)
                 )
             }
         }
     }
+
+    // -------------------------------------------------------------------------
+    // CURRENCY PICKER
+    // -------------------------------------------------------------------------
 
     if (pickerFor != null) {
         CurrencyPickerSheet(
             currencies = availableCurrencies,
             selected = if (pickerFor == "from") from else to,
             onSelect = { code ->
-                if (pickerFor == "from") from = code else to = code
+                if (pickerFor == "from") {
+                    from = code
+                } else {
+                    to = code
+                }
+
                 pickerFor = null
             },
-            onDismiss = { pickerFor = null }
+            onDismiss = {
+                pickerFor = null
+            }
         )
     }
 }
 
+
+// -----------------------------------------------------------------------------
+// CURRENCY SELECTION CARD
+// -----------------------------------------------------------------------------
+
 @Composable
-private fun CurrencyRow(code: String, onClick: () -> Unit) {
+private fun CurrencySelectionCard(
+    from: String,
+    to: String,
+    onFromClick: () -> Unit,
+    onToClick: () -> Unit,
+    onSwap: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        onClick = onClick
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(12.dp)
         ) {
-            Text(flag(code), fontSize = 22.sp)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(code, fontWeight = FontWeight.SemiBold)
-                Text(currencyName(code), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            CurrencyRow(
+                label = "FROM",
+                code = from,
+                onClick = onFromClick
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                FilledIconButton(
+                    onClick = onSwap,
+                    modifier = Modifier.size(42.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SwapVert,
+                        contentDescription = "Swap currencies"
+                    )
+                }
             }
+
+            Spacer(Modifier.height(24.dp))
+
+            CurrencyRow(
+                label = "TO",
+                code = to,
+                onClick = onToClick
+            )
         }
     }
 }
+
+
+// -----------------------------------------------------------------------------
+// CURRENCY ROW
+// -----------------------------------------------------------------------------
+
+@Composable
+private fun CurrencyRow(
+    label: String,
+    code: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                modifier = Modifier.width(48.dp),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Text(
+                text = flag(code),
+                fontSize = 24.sp
+            )
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = code,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
+
+                Text(
+                    text = currencyName(code),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null,
+                tint = Color.Gray
+            )
+        }
+    }
+}
+
+
+// -----------------------------------------------------------------------------
+// CURRENCY PICKER
+// -----------------------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -293,7 +672,9 @@ private fun CurrencyPickerSheet(
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var query by remember { mutableStateOf("") }
+    var query by remember {
+        mutableStateOf("")
+    }
 
     val filtered = remember(query, currencies) {
         if (query.isBlank()) {
@@ -301,7 +682,8 @@ private fun CurrencyPickerSheet(
         } else {
             currencies.filter { code ->
                 code.contains(query, ignoreCase = true) ||
-                        currencyName(code).contains(query, ignoreCase = true)
+                        currencyName(code)
+                            .contains(query, ignoreCase = true)
             }
         }
     }
@@ -327,14 +709,14 @@ private fun CurrencyPickerSheet(
 
             Spacer(Modifier.height(12.dp))
 
-            /*
-             * Search field
-             */
+            // Search
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant
+                    )
                     .padding(horizontal = 12.dp)
             ) {
                 Row(
@@ -349,7 +731,9 @@ private fun CurrencyPickerSheet(
 
                     BasicTextField(
                         value = query,
-                        onValueChange = { query = it },
+                        onValueChange = {
+                            query = it
+                        },
                         singleLine = true,
                         textStyle = LocalTextStyle.current.copy(
                             color = MaterialTheme.colorScheme.onSurface,
@@ -391,9 +775,7 @@ private fun CurrencyPickerSheet(
 
             Spacer(Modifier.height(10.dp))
 
-            /*
-             * Currency list
-             */
+            // Currency list
             if (filtered.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -418,7 +800,6 @@ private fun CurrencyPickerSheet(
                         key = { it }
                     ) { code ->
 
-                        val name = currencyName(code)
                         val isSelected = code == selected
 
                         Row(
@@ -427,9 +808,11 @@ private fun CurrencyPickerSheet(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(
                                     if (isSelected) {
-                                        MaterialTheme.colorScheme.secondaryContainer
+                                        MaterialTheme.colorScheme
+                                            .secondaryContainer
                                     } else {
-                                        MaterialTheme.colorScheme.surfaceVariant
+                                        MaterialTheme.colorScheme
+                                            .surfaceVariant
                                     }
                                 )
                                 .clickable {
@@ -456,9 +839,10 @@ private fun CurrencyPickerSheet(
                                 )
 
                                 Text(
-                                    text = name,
+                                    text = currencyName(code),
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme
+                                        .onSurfaceVariant
                                 )
                             }
 
