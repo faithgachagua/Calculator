@@ -306,6 +306,7 @@ private fun CurrencyPickerSheet(
                 placeholder = { Text("Search by code or name") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
