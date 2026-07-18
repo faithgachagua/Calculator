@@ -166,7 +166,9 @@ fun KeypadAmountField(
             onDismissRequest = {
                 showSheet = false
             },
-            sheetState = sheetState
+            sheetState = sheetState,
+            shape = RectangleShape,
+            dragHandle = { /* Remove the drag handle */ }
         ) {
             Column(
                 modifier = Modifier.padding(
