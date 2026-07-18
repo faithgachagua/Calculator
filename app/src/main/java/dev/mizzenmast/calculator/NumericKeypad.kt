@@ -1,12 +1,12 @@
 package dev.mizzenmast.calculator
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,7 +19,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -27,13 +26,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** A rounded-square digit/decimal/backspace pad, styled like the calculator's keys. */
+/**
+ * Compact calculator-style numeric keypad.
+ */
 @Composable
 fun NumericKeypad(
     onDigit: (String) -> Unit,
@@ -47,10 +50,17 @@ fun NumericKeypad(
         listOf("7", "8", "9"),
         listOf(".", "0", "⌫"),
     )
-    Column(modifier = modifier) {
-        for (row in rows) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                for (key in row) {
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        rows.forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                row.forEach { key ->
                     Button(
                         onClick = {
                             when (key) {
@@ -59,17 +69,26 @@ fun NumericKeypad(
                                 else -> onDigit(key)
                             }
                         },
-                        modifier = Modifier.weight(1f).aspectRatio(1.6f).padding(4.dp),
-                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        shape = RoundedCornerShape(4.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = MaterialTheme.colorScheme.onSurface
                         )
                     ) {
-                        if (key == "⌫") {
-                            Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = "Backspace")
+                        if (key == "backspace") {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Backspace,
+                                contentDescription = "Backspace"
+                            )
                         } else {
-                            Text(key, fontSize = 20.sp)
+                            Text(
+                                text = key,
+                                fontSize = 19.sp
+                            )
                         }
                     }
                 }
@@ -79,8 +98,9 @@ fun NumericKeypad(
 }
 
 /**
- * A read-only field that, when tapped, opens the app's own on-screen keypad in a bottom
- * sheet instead of the system keyboard — keeps input consistent across every screen.
+ * A custom filled-looking amount field that opens the app's own keypad.
+ *
+ * The value is updated immediately as the user presses keypad buttons.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,52 +113,117 @@ fun KeypadAmountField(
 ) {
     var showSheet by remember { mutableStateOf(false) }
 
-    OutlinedTextField(
-        value = value,
-        onValueChange = {},
-        readOnly = true,
-        label = { Text(label) },
-        suffix = suffix?.let { { Text(it) } },
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { showSheet = true }
-    )
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable {
+                showSheet = true
+            }
+            .padding(
+                horizontal = 16.dp,
+                vertical = 10.dp
+            )
+    ) {
+        Column {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = value.ifEmpty { "0" },
+                    modifier = Modifier.weight(1f),
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                suffix?.let {
+                    Text(
+                        text = it,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
 
     if (showSheet) {
-        var buffer by remember(value) { mutableStateOf(value) }
-        val sheetState = rememberModalBottomSheetState()
+        val sheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true
+        )
 
-        ModalBottomSheet(onDismissRequest = { showSheet = false }, sheetState = sheetState) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(8.dp))
+        ModalBottomSheet(
+            onDismissRequest = {
+                showSheet = false
+            },
+            sheetState = sheetState
+        ) {
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = 16.dp,
+                    vertical = 12.dp
+                )
+            ) {
                 Text(
-                    buffer.ifEmpty { "0" },
-                    fontSize = 40.sp,
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = value.ifEmpty { "0" },
+                    modifier = Modifier.fillMaxWidth(),
+                    fontSize = 36.sp,
                     fontWeight = FontWeight.Light,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.fillMaxWidth()
+                    textAlign = TextAlign.End
                 )
-                Spacer(Modifier.height(16.dp))
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 NumericKeypad(
-                    onDigit = { buffer += it },
-                    onDecimal = { if (!buffer.contains(".")) buffer = if (buffer.isEmpty()) "0." else "$buffer." },
-                    onBackspace = { if (buffer.isNotEmpty()) buffer = buffer.dropLast(1) }
+                    onDigit = { digit ->
+                        onValueChange(value + digit)
+                    },
+                    onDecimal = {
+                        if (!value.contains(".")) {
+                            onValueChange(
+                                if (value.isEmpty()) "0."
+                                else "$value."
+                            )
+                        }
+                    },
+                    onBackspace = {
+                        if (value.isNotEmpty()) {
+                            onValueChange(value.dropLast(1))
+                        }
+                    }
                 )
-                Spacer(Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    Button(
-                        onClick = {
-                            onValueChange(buffer.ifEmpty { "0" })
-                            showSheet = false
-                        },
-                        shape = RoundedCornerShape(14.dp)
-                    ) { Text("Done") }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = {
+                        showSheet = false
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text("Done")
                 }
-                Spacer(Modifier.height(8.dp))
+
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
