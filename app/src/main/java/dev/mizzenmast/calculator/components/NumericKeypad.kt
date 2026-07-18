@@ -1,10 +1,11 @@
-package dev.mizzenmast.calculator
+package dev.mizzenmast.calculator.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -74,7 +75,7 @@ fun NumericKeypad(
                             .weight(1f)
                             .height(52.dp),
                         shape = RoundedCornerShape(4.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                        contentPadding = PaddingValues(0.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = MaterialTheme.colorScheme.onSurface
