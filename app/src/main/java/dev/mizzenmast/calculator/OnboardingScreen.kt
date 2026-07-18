@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,11 +18,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -43,125 +46,281 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private data class Feature(val icon: ImageVector, val title: String, val description: String)
-
-private val features = listOf(
-    Feature(Icons.Default.Calculate, "Calculator", "Clean layout with memory functions and full () ± % support"),
-    Feature(Icons.Default.Straighten, "Unit Converter", "Length, weight, temperature and volume — swap instantly"),
-    Feature(Icons.Default.CurrencyExchange, "Currency Exchange", "Live rates, favorites and trend indicators"),
+private data class Feature(
+    val icon: ImageVector,
+    val title: String,
+    val description: String
 )
 
-/** Reused by the exchange screen too — ACCESS_NETWORK_STATE is a "normal" permission,
- *  so it's granted automatically once declared in the manifest; no runtime prompt needed. */
+private val features = listOf(
+    Feature(
+        Icons.Default.Calculate,
+        "Calculator",
+        "A clean calculator with memory functions and full expression support"
+    ),
+    Feature(
+        Icons.Default.Straighten,
+        "Unit Converter",
+        "Convert length, weight, temperature and volume instantly"
+    ),
+    Feature(
+        Icons.Default.CurrencyExchange,
+        "Currency Exchange",
+        "Live exchange rates, favorites and useful trend indicators"
+    )
+)
+
 fun isOnline(context: Context): Boolean {
-    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE)
+            as ConnectivityManager
+
     val network = cm.activeNetwork ?: return false
     val capabilities = cm.getNetworkCapabilities(network) ?: return false
-    return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+
+    return capabilities.hasCapability(
+        NetworkCapabilities.NET_CAPABILITY_INTERNET
+    )
 }
 
 @Composable
-fun OnboardingScreen(onContinue: () -> Unit) {
+fun OnboardingScreen(
+    onContinue: () -> Unit
+) {
     val context = LocalContext.current
-    var online by remember { mutableStateOf(isOnline(context)) }
+    var online by remember {
+        mutableStateOf(isOnline(context))
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(28.dp),
+            .padding(horizontal = 24.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(32.dp))
+
+        Spacer(Modifier.height(28.dp))
+
+        /*
+         * Hero icon
+         */
         Box(
             modifier = Modifier
-                .size(84.dp)
-                .clip(RoundedCornerShape(24.dp))
+                .size(96.dp)
+                .clip(RoundedCornerShape(30.dp))
                 .background(MaterialTheme.colorScheme.primary),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.Calculate,
+                imageVector = Icons.Default.Calculate,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(48.dp)
             )
         }
-        Spacer(Modifier.height(20.dp))
-        Text("SmartCalc", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(6.dp))
+
+        Spacer(Modifier.height(22.dp))
+
         Text(
-            "Calculator, converter and live exchange rates in one clean app",
+            text = "SmartCalc",
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.5).sp
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            text = "Everything you need for everyday calculations.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             fontSize = 15.sp
         )
 
-        Spacer(Modifier.height(36.dp))
-        features.forEach { feature ->
-            FeatureRow(feature)
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(30.dp))
+
+        /*
+         * Feature cards
+         */
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            features.forEach { feature ->
+                FeatureCard(feature)
+            }
         }
 
         Spacer(Modifier.weight(1f))
 
+        /*
+         * Connection status
+         */
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (online) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                }
+            )
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    if (online) Icons.Default.Wifi else Icons.Default.WifiOff,
-                    contentDescription = null,
-                    tint = if (online) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
-                )
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (online) {
+                                MaterialTheme.colorScheme.secondary
+                            } else {
+                                MaterialTheme.colorScheme.errorContainer
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (online) {
+                            Icons.Default.Wifi
+                        } else {
+                            Icons.Default.WifiOff
+                        },
+                        contentDescription = null,
+                        tint = if (online) {
+                            MaterialTheme.colorScheme.onSecondary
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        }
+                    )
+                }
+
                 Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(if (online) "Connected" else "No internet connection", fontWeight = FontWeight.SemiBold)
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
-                        if (online) "Exchange rates will load automatically"
-                        else "Currency exchange needs internet — connect and retry",
+                        text = if (online) {
+                            "You're connected"
+                        } else {
+                            "You're offline"
+                        },
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Text(
+                        text = if (online) {
+                            "Live exchange rates are available"
+                        } else {
+                            "Currency rates will be unavailable"
+                        },
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                if (!online) {
-                    TextButton(onClick = { online = isOnline(context) }) { Text("Retry") }
+
+                if (online) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                } else {
+                    TextButton(
+                        onClick = {
+                            online = isOnline(context)
+                        }
+                    ) {
+                        Text("Retry")
+                    }
                 }
             }
         }
 
         Spacer(Modifier.height(16.dp))
+
+        /*
+         * Main CTA
+         */
         Button(
             onClick = onContinue,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
-            Text("Get Started", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = "Get Started",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
+
         Spacer(Modifier.height(8.dp))
     }
 }
 
 @Composable
-private fun FeatureRow(feature: Feature) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(
+private fun FeatureCard(
+    feature: Feature
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
             modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(feature.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        }
-        Spacer(Modifier.width(14.dp))
-        Column {
-            Text(feature.title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-            Text(feature.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = feature.icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(23.dp)
+                )
+            }
+
+            Spacer(Modifier.width(14.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = feature.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp
+                )
+
+                Spacer(Modifier.height(2.dp))
+
+                Text(
+                    text = feature.description,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

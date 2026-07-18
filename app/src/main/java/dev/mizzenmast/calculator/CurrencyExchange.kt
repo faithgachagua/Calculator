@@ -3,12 +3,14 @@ package dev.mizzenmast.calculator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,12 +18,15 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingFlat
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.AssistChip
@@ -32,9 +37,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -49,6 +54,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -218,7 +224,7 @@ fun CurrencyExchangeScreen(modifier: Modifier = Modifier, refreshTrigger: Int = 
                             }
                         }
                         Spacer(Modifier.height(4.dp))
-                        Text("1 $from = ${formatResult(rate ?: 0.0)} $to", style = MaterialTheme.typography.bodySmall)
+                        Text("1 $from = ${formatResult(rate)} $to", style = MaterialTheme.typography.bodySmall)
                         if (lastUpdated != 0L) {
                             val label = remember(tick, lastUpdated) { elapsedLabel(lastUpdated) }
                             Spacer(Modifier.height(2.dp))
@@ -288,53 +294,186 @@ private fun CurrencyPickerSheet(
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
+
     val filtered = remember(query, currencies) {
-        if (query.isBlank()) currencies
-        else currencies.filter {
-            it.contains(query, ignoreCase = true) || currencyName(it).contains(query, ignoreCase = true)
+        if (query.isBlank()) {
+            currencies
+        } else {
+            currencies.filter { code ->
+                code.contains(query, ignoreCase = true) ||
+                        currencyName(code).contains(query, ignoreCase = true)
+            }
         }
     }
-    val sheetState = rememberModalBottomSheetState()
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Text("Choose a currency", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = { Text("Search by code or name") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true,
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        ) {
+            Text(
+                text = "Choose a currency",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
             )
-            Spacer(Modifier.height(8.dp))
-            LazyColumn(modifier = Modifier.height(420.dp)) {
-                items(filtered) { code ->
-                    Row(
+
+            Spacer(Modifier.height(12.dp))
+
+            /*
+             * Search field
+             */
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 16.sp
+                        ),
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .background(if (code == selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.background)
-                            .clickable { onSelect(code) }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(flag(code), fontSize = 20.sp, modifier = Modifier.width(36.dp))
-                        Column(
-                            Modifier
-                                .weight(1f)
-                                .padding(start = 4.dp)
-                        ) {
-                            Text(code, fontWeight = FontWeight.SemiBold)
-                            Text(currencyName(code), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            .weight(1f)
+                            .padding(
+                                horizontal = 10.dp,
+                                vertical = 13.dp
+                            ),
+                        decorationBox = { innerTextField ->
+                            if (query.isEmpty()) {
+                                Text(
+                                    text = "Search by code or name",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            innerTextField()
                         }
-                        if (code == selected) {
-                            Icon(Icons.Default.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary)
+                    )
+
+                    if (query.isNotEmpty()) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Clear search",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable {
+                                    query = ""
+                                }
+                                .padding(4.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            /*
+             * Currency list
+             */
+            if (filtered.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No currencies found",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 480.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(
+                        items = filtered,
+                        key = { it }
+                    ) { code ->
+
+                        val name = currencyName(code)
+                        val isSelected = code == selected
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (isSelected) {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    }
+                                )
+                                .clickable {
+                                    onSelect(code)
+                                }
+                                .padding(
+                                    horizontal = 14.dp,
+                                    vertical = 12.dp
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = flag(code),
+                                fontSize = 22.sp,
+                                modifier = Modifier.width(40.dp)
+                            )
+
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = code,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+
+                                Text(
+                                    text = name,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
             }
+
             Spacer(Modifier.height(12.dp))
         }
     }

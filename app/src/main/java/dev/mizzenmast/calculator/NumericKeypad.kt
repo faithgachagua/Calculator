@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,7 +49,7 @@ fun NumericKeypad(
         listOf("1", "2", "3"),
         listOf("4", "5", "6"),
         listOf("7", "8", "9"),
-        listOf(".", "0", "⌫"),
+        listOf(".", "0", "backspace"),
     )
 
     Column(
@@ -65,7 +66,7 @@ fun NumericKeypad(
                         onClick = {
                             when (key) {
                                 "." -> onDecimal()
-                                "⌫" -> onBackspace()
+                                "backspace" -> onBackspace()
                                 else -> onDigit(key)
                             }
                         },
